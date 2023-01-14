@@ -1,9 +1,10 @@
 import type { ActionFunction, LoaderFunction } from '@remix-run/node';
 import { Form, useActionData } from '@remix-run/react';
 import { json, redirect } from '@remix-run/node';
-import { prisma } from '~/util/prisma.server';
+
 import type { AppError } from '~/util';
-import { auth } from '~/auth.server';
+import { auth } from '~/auth.server/index.server';
+import { prisma } from '~/util/prisma.server';
 import { useRef } from 'react';
 
 export let meta = () => {
@@ -84,20 +85,20 @@ export default function Index() {
   const passwordRef = useRef(null);
 
   return (
-    <div className="p-8 w-96 bg-slate-200">
+    <div className="w-96 bg-slate-200 p-8">
       <Form className="" method="post">
         <div className="mb-6">
           <label
             htmlFor="email"
-            className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+            className="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-300"
           >
             Your Email
           </label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <svg
                 aria-hidden="true"
-                className="w-5 h-5 text-gray-500 dark:text-gray-400"
+                className="h-5 w-5 text-gray-500 dark:text-gray-400"
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 xmlns="http://www.w3.org/2000/svg"
@@ -119,7 +120,7 @@ export default function Index() {
         <div className="mb-6">
           <label
             htmlFor="password"
-            className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+            className="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-300"
           >
             Your password
           </label>

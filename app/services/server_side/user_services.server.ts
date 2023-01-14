@@ -1,6 +1,6 @@
 import { Permission } from '@prisma/client';
 import type { User } from '@prisma/client';
-import { auth } from '~/auth.server';
+import { auth } from '~/auth.server/index.server';
 import { authorized } from '~/util/cookies';
 import { prisma } from '~/util/prisma.server';
 
