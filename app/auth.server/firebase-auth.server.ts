@@ -1,9 +1,9 @@
-import type { Auth, AuthSession, AuthUser } from './auth-types'
-import { auth, restApiSignInUrl } from '~/firebase'
-import { json, redirect } from '@remix-run/node'
+import type { Auth, AuthSession, AuthUser } from './auth-types';
+import { auth, restApiSignInUrl } from '~/firebase.server';
+import { json, redirect } from '@remix-run/node';
 
-import type { AppError } from '~/util'
-import type { DecodedIdToken } from 'firebase-admin/auth'
+import type { AppError } from '~/util';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 
 /**
  * Firebase implementation of Auth Interface
@@ -22,23 +22,23 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 422,
         }
-      )
+      );
     }
 
     try {
       const newUser = await auth.createUser({
         email: user.username,
         password: user.password,
-      })
+      });
       if (redirectTo) {
-        return redirect(redirectTo)
+        return redirect(redirectTo);
       } else {
         return json(
           { status: 'success', user: newUser },
           {
             status: 201,
           }
-        )
+        );
       }
     } catch (error) {
       throw json<AppError>(
@@ -50,7 +50,7 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 500,
         }
-      )
+      );
     }
   }
 
@@ -59,21 +59,21 @@ export class FirebaseAuth implements Auth<AuthUser> {
     email,
     password,
   }: {
-    id: string
-    email: string
-    password: string
+    id: string;
+    email: string;
+    password: string;
   }): Promise<Response> {
     try {
       const updatedUser = await auth.updateUser(id, {
         email,
         password,
-      })
+      });
       return json(
         { status: 'success', user: updatedUser },
         {
           status: 201,
         }
-      )
+      );
     } catch (error) {
       throw json<AppError>(
         {
@@ -84,7 +84,7 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 500,
         }
-      )
+      );
     }
   }
 
@@ -99,12 +99,12 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 422,
         }
-      )
+      );
     }
 
     try {
-      const headers: Headers = new Headers()
-      headers.append('Content-Type', 'application/json')
+      const headers: Headers = new Headers();
+      headers.append('Content-Type', 'application/json');
 
       const req: Request = new Request(restApiSignInUrl, {
         method: 'post',
@@ -114,9 +114,9 @@ export class FirebaseAuth implements Auth<AuthUser> {
           password: user.password,
           returnSecureToken: true,
         }),
-      })
-      const authResponse: Response = await fetch(req)
-      const credentials: any = await authResponse.json()
+      });
+      const authResponse: Response = await fetch(req);
+      const credentials: any = await authResponse.json();
 
       // check for error
       if (credentials.error) {
@@ -129,14 +129,14 @@ export class FirebaseAuth implements Auth<AuthUser> {
           {
             status: 422,
           }
-        )
+        );
       }
 
       // get the user to retrieve any custom claims (e.g. role)
-      const firebaseUser = await auth.getUser(credentials.localId)
+      const firebaseUser = await auth.getUser(credentials.localId);
 
       // expires in 5 days
-      const expiresIn: number = 60 * 60 * 24 * 5 * 1000
+      const expiresIn: number = 60 * 60 * 24 * 5 * 1000;
 
       // Create the session cookie. This will also verify the ID token in the process.
       // The session cookie will have the same claims as the ID token.
@@ -147,25 +147,25 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           expiresIn,
         }
-      )
+      );
 
       const sessionUser: AuthUser = {
         id: firebaseUser.uid,
         username: firebaseUser.email,
         name: firebaseUser.displayName,
         role: firebaseUser.customClaims?.role,
-      }
+      };
 
       return this.session.createAuthSession({
         idToken: sessionIdToken,
         user: sessionUser,
-      })
+      });
     } catch (error) {
       // TODO: look into a modular logging package
       console.error(
         'auth/login',
         `Could not create the session cookie - ${error}`
-      )
+      );
       return json<AppError>(
         {
           status: 'error',
@@ -175,7 +175,7 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 500,
         }
-      )
+      );
     }
   }
 
@@ -184,13 +184,13 @@ export class FirebaseAuth implements Auth<AuthUser> {
       request,
       ['idToken', 'user'],
       redirectTo
-    )
+    );
   }
 
   async exists(user: AuthUser): Promise<boolean> {
     try {
       if (await auth.getUserByEmail(user.username)) {
-        return true
+        return true;
       }
     } catch (error) {
       throw json<AppError>(
@@ -200,10 +200,10 @@ export class FirebaseAuth implements Auth<AuthUser> {
           errorMessage: `Could not check for account - ${error}`,
         },
         { status: 500 }
-      )
+      );
     }
 
-    return false
+    return false;
   }
 
   async requireUser(
@@ -211,20 +211,20 @@ export class FirebaseAuth implements Auth<AuthUser> {
     role: string | null = null,
     redirectTo?: string
   ): Promise<Response> {
-    const session = await this.session.getAuthSession(request)
-    const sessionIdToken = session.get('idToken')
-    let decodedClaims: DecodedIdToken
+    const session = await this.session.getAuthSession(request);
+    const sessionIdToken = session.get('idToken');
+    let decodedClaims: DecodedIdToken;
 
     if (sessionIdToken && typeof sessionIdToken === 'string') {
       try {
-        decodedClaims = await auth.verifySessionCookie(sessionIdToken)
+        decodedClaims = await auth.verifySessionCookie(sessionIdToken);
       } catch (error) {
         // Failed verification (e.g. Firebase session cookie revoked) -> unset session vars
         throw await this.session.destroyAuthSession(
           request,
           ['idToken', 'user'],
           redirectTo ? redirectTo : undefined
-        )
+        );
       }
 
       if (!role || role === decodedClaims?.role) {
@@ -233,12 +233,12 @@ export class FirebaseAuth implements Auth<AuthUser> {
           {
             status: 200,
           }
-        )
+        );
       }
     }
 
     if (redirectTo) {
-      throw redirect(redirectTo)
+      throw redirect(redirectTo);
     } else {
       throw json<AppError>(
         {
@@ -249,13 +249,13 @@ export class FirebaseAuth implements Auth<AuthUser> {
         {
           status: 401,
         }
-      )
+      );
     }
   }
 
   async user(request: Request): Promise<AuthUser | null> {
-    const session = await this.session.getAuthSession(request)
-    const user: AuthUser = JSON.parse(session.get('user') || null)
-    return user
+    const session = await this.session.getAuthSession(request);
+    const user: AuthUser = JSON.parse(session.get('user') || null);
+    return user;
   }
 }

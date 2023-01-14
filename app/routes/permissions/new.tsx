@@ -1,28 +1,28 @@
-import type { ActionFunction, LoaderFunction } from '@remix-run/node'
-import { Link, useSearchParams } from '@remix-run/react'
-import { ValidatedForm, validationError } from 'remix-validated-form'
+import type { ActionFunction, LoaderFunction } from '@remix-run/node';
+import { Link, useSearchParams } from '@remix-run/react';
+import { ValidatedForm, validationError } from 'remix-validated-form';
 import {
   buildQueryStringFromRequest,
   buildQueryStringFromSearchParams,
   queryStringOptions,
-} from '~/util/query-string'
+} from '~/util/query-string';
 
-import CheckboxGroup from '../../components/form/checkbox-group'
-import Input from '~/components/form/input'
-import { Permission } from '@prisma/client'
-import React from 'react'
-import type { User } from '@prisma/client'
-import { auth } from '~/auth.server'
-import { authenticatedUser } from '~/services/server_side/user_services.server'
-import { json } from '@remix-run/node'
-import { prisma } from '~/util/prisma.server'
-import { redirect } from '@remix-run/node'
-import { withZod } from '@remix-validated-form/with-zod'
-import { z } from 'zod'
-import { zfd } from 'zod-form-data'
+import CheckboxGroup from '../../components/form/checkbox-group';
+import Input from '~/components/form/input';
+import { Permission } from '@prisma/client';
+import React from 'react';
+import type { User } from '@prisma/client';
+import { auth } from '~/auth.server/index.server';
+import { authenticatedUser } from '~/services/server_side/user_services.server';
+import { json } from '@remix-run/node';
+import { prisma } from '~/util/prisma.server';
+import { redirect } from '@remix-run/node';
+import { withZod } from '@remix-validated-form/with-zod';
+import { z } from 'zod';
+import { zfd } from 'zod-form-data';
 
 interface LoaderData {
-  loggedInUser: User
+  loggedInUser: User;
 }
 
 const schema = z
@@ -42,22 +42,22 @@ const schema = z
   .refine((data) => data.password === data.passwordConfirm, {
     message: 'Passwords do not match',
     path: ['passwordConfirm'],
-  })
+  });
 
-export const clientValidator = withZod(schema)
+export const clientValidator = withZod(schema);
 
 export const loader: LoaderFunction = async ({ request, params }) => {
-  const permissions = [Permission.MANAGE_USERS]
-  const loggedInUser = await authenticatedUser(request, permissions)
-  if (typeof loggedInUser === 'string') return redirect(loggedInUser)
+  const permissions = [Permission.MANAGE_USERS];
+  const loggedInUser = await authenticatedUser(request, permissions);
+  if (typeof loggedInUser === 'string') return redirect(loggedInUser);
 
-  return json<LoaderData>({ loggedInUser })
-}
+  return json<LoaderData>({ loggedInUser });
+};
 
 export const action: ActionFunction = async ({ request }) => {
-  const permissions = [Permission.MANAGE_USERS]
-  const loggedInUser = await authenticatedUser(request, permissions)
-  if (typeof loggedInUser === 'string') return redirect(loggedInUser)
+  const permissions = [Permission.MANAGE_USERS];
+  const loggedInUser = await authenticatedUser(request, permissions);
+  if (typeof loggedInUser === 'string') return redirect(loggedInUser);
 
   const serverValidator = withZod(
     schema.refine(
@@ -66,19 +66,19 @@ export const action: ActionFunction = async ({ request }) => {
           where: {
             email: data.email,
           },
-        })
-        return !foundEmail
+        });
+        return !foundEmail;
       },
       {
         message: 'That email has already been registered',
         path: ['email'],
       }
     )
-  )
+  );
 
-  const data = await serverValidator.validate(await request.formData())
+  const data = await serverValidator.validate(await request.formData());
 
-  if (data.error) return validationError(data.error)
+  if (data.error) return validationError(data.error);
 
   const {
     name,
@@ -86,15 +86,15 @@ export const action: ActionFunction = async ({ request }) => {
     phone,
     password,
     permissions: userPermissions,
-  } = data.data
+  } = data.data;
 
   const res = await (
     await auth.createAccount({ username: email, password })
-  ).json()
+  ).json();
 
-  const firebaseId = res.user?.uid
+  const firebaseId = res.user?.uid;
   if (!firebaseId) {
-    throw new Error('No firebaseId returned from auth.createAccount')
+    throw new Error('No firebaseId returned from auth.createAccount');
   }
 
   const user = await prisma.user.create({
@@ -106,20 +106,20 @@ export const action: ActionFunction = async ({ request }) => {
       status: 'ACTIVE',
       permissions: userPermissions,
     },
-  })
+  });
 
   return redirect(
     `/permissions/${user.id}?${buildQueryStringFromRequest(request)}`
-  )
-}
+  );
+};
 
 const CreateUser = () => {
-  const [searchParams] = useSearchParams()
+  const [searchParams] = useSearchParams();
 
   return (
     <ValidatedForm method="post" validator={clientValidator}>
-      <div className="flex flex-col w-full p-4 mt-10 border border-gray-200 rounded-lg shadow-md bg-slate-300 sm:p-6 md:p-8">
-        <h3 className="mb-6 grow-down">New User...</h3>
+      <div className="mt-10 flex w-full flex-col rounded-lg border border-gray-200 bg-slate-300 p-4 shadow-md sm:p-6 md:p-8">
+        <h3 className="grow-down mb-6">New User...</h3>
 
         <div className="flex w-full space-x-12">
           <div className="w-1/4 space-y-4">
@@ -285,8 +285,8 @@ const CreateUser = () => {
         </div>
 
         <div className="mt-12 ml-auto space-x-6 rounded-md shadow-sm">
-          <button className="relative inline-flex items-center justify-center p-0.5 mb-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-purple-600 to-blue-500 group-hover:from-purple-600 group-hover:to-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800">
-            <span className="relative w-full px-5 py-1.5 transition-all duration-75 ease-in bg-white rounded-md dark:bg-gray-900 group-hover:bg-opacity-0">
+          <button className="group relative mb-2 inline-flex items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-purple-600 to-blue-500 p-0.5 text-sm font-medium text-gray-900 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 group-hover:from-purple-600 group-hover:to-blue-500 dark:text-white dark:focus:ring-blue-800">
+            <span className="relative w-full rounded-md bg-white px-5 py-1.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-900">
               Save
             </span>
           </button>
@@ -295,9 +295,9 @@ const CreateUser = () => {
             to={`/permissions?${buildQueryStringFromSearchParams(
               searchParams
             )}`}
-            className="relative inline-flex items-center justify-center p-0.5 mb-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-pink-200 dark:focus:ring-pink-800"
+            className="group relative mb-2 inline-flex items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-pink-500 to-orange-400 p-0.5 text-sm font-medium text-gray-900 hover:text-white focus:outline-none focus:ring-4 focus:ring-pink-200 group-hover:from-pink-500 group-hover:to-orange-400 dark:text-white dark:focus:ring-pink-800"
           >
-            <span className="relative w-full px-5 py-1.5 transition-all duration-75 ease-in bg-white rounded-md dark:bg-gray-900 group-hover:bg-opacity-0">
+            <span className="relative w-full rounded-md bg-white px-5 py-1.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-900">
               Cancel
             </span>
           </Link>
@@ -314,10 +314,10 @@ const CreateUser = () => {
             readOnly
             aria-hidden
           />
-        )
+        );
       })}
     </ValidatedForm>
-  )
-}
+  );
+};
 
-export default CreateUser
+export default CreateUser;
