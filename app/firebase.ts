@@ -1,13 +1,18 @@
-import {
+import type {
   App,
-  ServiceAccount,
+  ServiceAccount
+} from 'firebase-admin/app';
+import {
   cert,
   getApp,
   getApps,
   initializeApp,
 } from 'firebase-admin/app';
-import { Auth, getAuth } from 'firebase-admin/auth';
-import { Firestore, getFirestore } from 'firebase-admin/firestore';
+
+import type { Auth } from 'firebase-admin/auth';
+import type { Firestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 let app: App;
 let auth: Auth;
