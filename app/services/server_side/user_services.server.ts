@@ -1,6 +1,6 @@
 import { Permission } from '@prisma/client';
 import type { User } from '@prisma/client';
-import { auth } from '~/auth.server';
+// import { auth } from '~/auth.server';
 import { authorized } from '~/util/cookies';
 import { prisma } from '~/util/prisma.server';
 
@@ -10,13 +10,19 @@ export const authenticatedUser = async (
 ): Promise<User | string> => {
   const path = new URL(request.url).pathname;
 
-  const fbUser = await auth.user(request);
+  // const fbUser = await auth.user(request);
 
-  if (!fbUser) return '/';
+  // if (!fbUser) return '/';
+
+  // const user = await prisma?.user.findUnique({
+  //   where: {
+  //     firebaseId: fbUser?.id,
+  //   },
+  // });
 
   const user = await prisma?.user.findUnique({
     where: {
-      firebaseId: fbUser?.id,
+      firebaseId: 'b21Mm2b5KKTZYRqvlNtmKbzbfR53',
     },
   });
 
