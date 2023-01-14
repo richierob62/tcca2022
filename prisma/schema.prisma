@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// enums
+
+enum AccountType {
+  CASH
+  OTHER_ASSET
+  LIABILITY
+  REVENUE
+  EXPENSE
+}
+
+enum IdType {
+  PASSPORT
+  NATIONAL_ID
+  OTHER
+}
+
+enum LoanApplicationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum LoanStatus {
+  UNDISBURSED
+  ACTIVE
+  PAID
+  CANCELLED
+  DEFAULTED
+}
+
+enum TransactionType {
+  TRANSFER
+  RECEIPT
+  DISBURSEMENT
+  ADJUSTMENT
+  RECONCILIATION
+}
+
+enum TransferType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum Permission {
+  CALL_LOG
+  CLIENT_VIEW
+  CLIENT_UPDATE_BASIC
+  CLIENT_UPDATE_ADVANCED
+  RECEIPT_VIEW
+  RECEIPT_CREATE
+  RECONCILE_VIEW
+  RECONCILE_MANAGE
+  FINANCE_CASH_FLOW
+  FINANCE_BANK_TRANSFER
+  FINANCE_ACCOUNT_DETAILS_VIEW
+  FINANCE_ACCOUNT_DETAILS_DOWNLOAD
+  MANAGE_USERS
+  MANAGE_DEVICES
+  APPLICATION_LIST
+  APPLICATION_CREATE
+  APPLICATION_DECISION
+  LOAN_LIST
+  LOAN_ADJUSTMENT
+  LOAN_DISBURSEMENT
+  CREATE_ACCOUNT
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+// embedded types
+
+type Address {
+  street String
+  town   String
+  parish String
+}
+
+// models
+
+model Account {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  accountNum  String        @unique
+  accountType AccountType
+  name        String
+  debits      Transaction[] @relation(name: "debitTransactions")
+  credits     Transaction[] @relation(name: "creditTransactions")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model CallHistory {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  scheduledPaymentId String           @db.ObjectId
+  scheduledPayment   ScheduledPayment @relation(fields: [scheduledPaymentId], references: [id])
+  callerId           String           @db.ObjectId
+  calledBy           User             @relation(fields: [callerId], references: [id])
+  note               String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model Client {
+  id                   String            @id @default(auto()) @map("_id") @db.ObjectId
+  clientNum            String            @unique
+  name                 String            @unique
+  dateBirth            DateTime
+  address              Address
+  phone                String
+  occupation           String
+  driverTrn            String            @unique
+  secondIdType         IdType
+  secondIdNumber       String
+  imageUrl             String?
+  otherContactName     String
+  otherContactPhone    String
+  otherContactRelation String
+  maxLoanAmount        Int
+  maxActiveLoans       Int               @default(1)
+  receipts             Receipt[]
+  loans                Loan[]
+  notes                ClientNote[]
+  loanApplications     LoanApplication[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model ClientNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId  String   @db.ObjectId
+  client    Client   @relation(fields: [clientId], references: [id])
+  note      String
+  creatorId String   @db.ObjectId
+  createdBy User     @relation(fields: [creatorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Device {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  accessKey    String   @unique @default(cuid())
+  approvedById String   @db.ObjectId
+  approvedBy   User     @relation(fields: [approvedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Loan {
+  id                      String             @id @default(auto()) @map("_id") @db.ObjectId
+  loanNum                 String             @unique
+  clientId                String             @db.ObjectId
+  client                  Client             @relation(fields: [clientId], references: [id])
+  approverId              String             @db.ObjectId
+  approvedBy              User               @relation(name: "loanApproved", fields: [approverId], references: [id])
+  // approvedDisbursementDate DateTime
+  actualDisbursementDate  DateTime?
+  disbursedById           String?            @db.ObjectId
+  disbursedBy             User?              @relation(name: "loanDisbursed", fields: [disbursedById], references: [id])
+  loanStartDate           DateTime
+  amount                  Int
+  interestRate            Float
+  initialUnearnedInterest Int
+  numPayments             Int
+  dueMonthly              Int
+  // statusId                String             @db.ObjectId
+  status                  LoanStatus
+  scheduledPayments       ScheduledPayment[]
+  loanApplicationId       String             @unique @db.ObjectId
+  loanApplication         LoanApplication    @relation(fields: [loanApplicationId], references: [id])
+  loanAdjustments         LoanAdjustment[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+
+model LoanAdjustment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  adjustmentNum String   @unique
+  loanId        String   @db.ObjectId
+  loan          Loan     @relation(fields: [loanId], references: [id])
+  amount        Int
+  // reason           String
+  creatorId     String   @db.ObjectId
+  createdBy     User     @relation(fields: [creatorId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LoanApplication {
+  id                        String                @id @default(auto()) @map("_id") @db.ObjectId
+  applicationNum            String                @unique
+  applicationDate           DateTime
+  requestedDisbursementDate DateTime
+  requestedAmount           Int
+  requestedTerm             Int
+  purpose                   String
+  status                    LoanApplicationStatus
+  clientId                  String                @db.ObjectId
+  client                    Client                @relation(fields: [clientId], references: [id])
+  loan                      Loan?
+  // amount                    Int
+  creatorId                 String                @db.ObjectId
+  createdBy                 User                  @relation(fields: [creatorId], references: [id])
+  // notes                     String?
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+}
+
+model PaymentReceipt {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  scheduledPaymentId String           @db.ObjectId
+  scheduledPayment   ScheduledPayment @relation(fields: [scheduledPaymentId], references: [id])
+  receiptId          String           @db.ObjectId
+  receipt            Receipt          @relation(fields: [receiptId], references: [id])
+  amount             Int
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model Receipt {
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  receiptNum       String           @unique
+  clientId         String           @db.ObjectId
+  client           Client           @relation(fields: [clientId], references: [id])
+  amount           Int
+  receiptDate      DateTime
+  paymentReceipts  PaymentReceipt[]
+  receiverId       String           @db.ObjectId
+  receivedBy       User             @relation(fields: [receiverId], references: [id])
+  notes            String?
+  reconciliationId String?          @db.ObjectId
+  reconciliation   Reconciliation?  @relation(fields: [reconciliationId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Reconciliation {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId           String    @db.ObjectId
+  clerk             User      @relation(name: "reconciliationsPresented", fields: [clerkId], references: [id])
+  reconciledBy      String    @db.ObjectId
+  reconciler        User      @relation(name: "reconciliationsAccepted", fields: [reconciledBy], references: [id])
+  date              DateTime
+  receipts          Receipt[]
+  amountSurrendered Int
+  amountExpected    Int
+  notes             String?
+}
+
+model ScheduledPayment {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  loanId          String           @db.ObjectId
+  loan            Loan             @relation(fields: [loanId], references: [id])
+  dueDate         DateTime
+  promiseDate     DateTime?
+  paymentNumber   Int
+  amount          Int
+  paymentReceipts PaymentReceipt[]
+  callHistory     CallHistory[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Transfer {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  transferNum  String       @unique
+  transferType TransferType
+  transferDate DateTime
+  userId       String       @db.ObjectId
+  user         User         @relation(fields: [userId], references: [id])
+  amount       Int
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Transaction {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  amount          Int
+  activityType    TransactionType
+  activityId      String          @db.ObjectId
+  date            DateTime
+  debitAccountId  String          @db.ObjectId
+  debitAccount    Account         @relation(name: "debitTransactions", fields: [debitAccountId], references: [id])
+  creditAccountId String          @db.ObjectId
+  creditAccount   Account         @relation(name: "creditTransactions", fields: [creditAccountId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model User {
+  id                       String            @id @default(auto()) @map("_id") @db.ObjectId
+  firebaseId               String            @unique
+  email                    String            @unique
+  name                     String            @unique
+  phone                    String?
+  permissions              Permission[]
+  receipts                 Receipt[]
+  clientNotes              ClientNote[]
+  callHistory              CallHistory[]
+  loanApplications         LoanApplication[]
+  reconciliationsPresented Reconciliation[]  @relation(name: "reconciliationsPresented")
+  reconciliationsAccepted  Reconciliation[]  @relation(name: "reconciliationsAccepted")
+  loanAdjustments          LoanAdjustment[]
+  approvedLoans            Loan[]            @relation(name: "loanApproved")
+  disbursements            Loan[]            @relation(name: "loanDisbursed")
+  transfers                Transfer[]
+  deviceApproval           Device[]
+  status                   UserStatus
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+}
